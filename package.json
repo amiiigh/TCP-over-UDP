@@ -1,0 +1,15 @@
+{
+  "name": "udt",
+  "version": "1.0.0",
+  "description": "A reliable udp protocol",
+  "main": "index.js",
+  "directories": {
+    "src": "src"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel --presets es2015 -d lib/ src"
+  },
+  "author": "Amirhossein Ghafari",
+  "license": "ISC"
+}
