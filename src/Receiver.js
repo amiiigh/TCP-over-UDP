@@ -18,8 +18,6 @@ function Receiver(packetSender) {
 util.inherits(Receiver, EventEmitter);
 
 Receiver.prototype.receive = function (packet) {
-
-
   if (this._closed) {
     // Since this is closed, don't do anything.
     return;

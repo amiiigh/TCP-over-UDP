@@ -8,10 +8,10 @@ var util = require('util');
 module.exports = Sender;
 function Sender(packetSender) {
 	this._packetSender = packetSender;
+	this._initialSequenceNumber = Math.floor(Math.random() * (1000)); // initial value needs further work
 	this._sendingQueue = [];
 	this._currentCongestionControlState = constants.CongestionControlStates.SLOW_START;
 	this._currentTCPState = constants.TCPStates.CLOSED;
-	this._baseSequenceNumber = Math.floor(Math.random() * (1000)); // initial value needs further work
 	this._nextSequenceNumber = this._baseSequenceNumber + 1;
 	this._retransmissionQueue = {};
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
@@ -19,20 +19,25 @@ function Sender(packetSender) {
 }
 
 Sender.prototype.send = function (data) {
-	if (this._currentTCPState === constants.TCPStates.CLOSED) {
-		this._currentTCPState = constants.TCPStates.SYN_SENT
-		this._packetSender.send(new Packet(constants.PacketTypes.SYN, this._baseSequenceNumber, Buffer.alloc(0)))
-	} else if (this._currentTCPState === constants.TCPStates.SYN_SENT) {
-
-	} else if (this._currentTCPState === constants.TCPStates.ESTABLISHED) {
-		
-	}
 	var chunks = helpers.splitArrayLike(data, constants.UDP_SAFE_SEGMENT_SIZE);
 	this._sendingQueue = this._sendingQueue.concat(chunks);
 	if (!this._sending) {
 		this._sendData()
 		this._sending = true;
 	}
+}
+
+Sender.prototype.sendSyn = function () {
+	let syncPacket = new Packet(this._initialSequenceNumber, 0, constants.PacketTypes.SYN, Buffer.alloc(0))
+	this._packetSender.send(syncPacket)
+}
+
+Sender.prototype.sendSynAck = function (sequenceNumber) {
+
+}
+
+Sender.prototype.sendAck = function (sequenceNumber) {
+	this._packetSender.send(new Packet(this._nextSequenceNumber, sequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
 }
 
 Sender.prototype._sendData = function () {

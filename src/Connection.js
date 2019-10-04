@@ -6,11 +6,10 @@ var util = require('util');
 
 module.exports = Connection;
 function Connection(packetSender) {
-	this._currentTCPState = constants.TCPStates.LISTEN;
+	this._currentConnectionTCPState = constants.TCPStates.LISTEN;
 	this._sender = new Sender(packetSender);
 	this._receiver = new Receiver(packetSender);
-	Duplex.call(this)
-
+	Duplex.call(this);
 	var self = this;
 	this._receiver.on('data', function (data) {
 		self.emit('data', data)
@@ -20,41 +19,56 @@ function Connection(packetSender) {
 util.inherits(Connection, Duplex);
 
 Connection.prototype.send = function (data) {
-	this._sender.send(data);
+	switch(this._currentTCPState) {
+		case constants.TCPStates.CLOSED:
+			this._sender.sendSyn();
+			this._currentTCPState = constants.TCPStates.SYN_SENT;
+			break;
+		case constants.TCPStates.SYN_SENT:
+			break;
+		case constants.TCPStates.ESTABLISHED:
+			this._sender.send(data);
+			break;
+	}
 };
 
 Connection.prototype.receive = function (packet) {
-	if (this._currentTCPState === constants.TCPStates.LISTEN) {
-		switch(packet.getPacketType()) {
-			case constants.PacketTypes.SYN:
-			this._currentTCPState = constants.TCPStates.SYN_RCVD;
-			this._packetSender.send(new Packet(constants.PacketTypes.ACK, packet.getSequenceNumber(), Buffer.alloc(0)))
-			this._packetSender.send(new Packet(constants.PacketTypes.SYN, packet.getSequenceNumber(), Buffer.alloc(0)))
-			default:
-			break
-		}
-	} else if (this._currentTCPState === constants.TCPStates.SYN_RCVD) {
-		switch(packet.getPacketType()) {
-			case constants.PacketTypes.ACK:
-			this._baseSequenceNumber = packet.getSequenceNumber();
-			this._currentTCPState = constants.TCPStates.ESTABLISHED;
-			default:
+	switch(this._currentTCPState) {
+		case constants.TCPStates.LISTEN:
+			switch(packet.getPacketType()) {
+				case constants.PacketTypes.ACK:
+					this._baseSequenceNumber = packet.getSequenceNumber();
+					this._currentTCPState = constants.TCPStates.ESTABLISHED;
+				case constants.PacketTypes.SYN:
+					this._sender.sendSynAck(packet.getSequenceNumber());
+					this._currentTCPState = constants.TCPStates.SYN_RCVD;
+				default:
+					break;
+			}
 			break;
-		}
-	} else if (this._currentTCPState === constants.TCPStates.ESTABLISHED) {
-		switch(packet.getPacketType()) {
-			// here is data 
-			case constants.PacketTypes.DATA:
-
-		}
-	}
-	switch(packet.getPacketType()) {
-		case constants.PacketTypes.DATA:
-		this._receiver.receive(packet)
-		case constants.PacketTypes.ACK:
-		this._sender.positiveAck(packet.getSequenceNumber());
-		default:
-		this._receiver.receive(packet)
+		case constants.TCPStates.SYN_SENT:
+			switch(packet.getPacketType()) {
+				case constants.PacketTypes.SYN_ACK:
+					this._sender.verifyAck(packet.getSequenceNumber())
+					this._sender.sendAck(packet.getSequenceNumber())
+					this.emit('connect')
+					this._currentTCPState = constants.TCPStates.ESTABLISHED;
+					break;
+			}
+			// if acked and got the syn go to established
+			break;
+		case constants.TCPStates.SYN_RCVD:
+			switch(packet.getPacketType()) {
+				case constants.PacketTypes.ACK:
+					this._sender.verifyAck(packet.getSequenceNumber());
+					this.emit('connect');
+					this._currentTCPState = constants.TCPStates.ESTABLISHED;
+					break;
+			}
+			break;
+		case constants.TCPStates.ESTABLISHED:
+			this._receiver.receive(packet);
+			break;
 	}
 };
 
