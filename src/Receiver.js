@@ -1,4 +1,4 @@
-var LinkedList = require('./LinkedList');
+// var LinkedList = require('./LinkedList');
 var constants = require('./constants');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
@@ -9,9 +9,9 @@ function Receiver(packetSender) {
   this._synced = false;
   this._nextExpectedSequenceNumber = 0;
   this._baseSequenceNumber = 0;
-  this._packets = new LinkedList(function (packetA, packetB) {
-    return packetA.getSequenceNumber() - packetB.getSequenceNumber();
-  });
+  // this._packets = new LinkedList(function (packetA, packetB) {
+  //   return packetA.getSequenceNumber() - packetB.getSequenceNumber();
+  // });
   this._packetSender = packetSender;
   this._closed = false;
 }

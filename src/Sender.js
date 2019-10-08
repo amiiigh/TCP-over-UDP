@@ -1,6 +1,5 @@
 var helpers = require('./helpers');
 var constants = require('./constants');
-var PendingPacket = require('./PendingPacket');
 var Packet = require('./Packet');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
@@ -8,62 +7,105 @@ var util = require('util');
 module.exports = Sender;
 function Sender(packetSender) {
 	this._packetSender = packetSender;
-	this._initialSequenceNumber = Math.floor(Math.random() * (1000)); // initial value needs further work
-	this._sendingQueue = [];
+	// TODO
+	this._initialSequenceNumber = helpers.generateRandomNumber(constants.INITIAL_MAX_WINDOW_SIZE, constants.MAX_SEQUENCE_NUMBER)
 	this._currentCongestionControlState = constants.CongestionControlStates.SLOW_START;
-	this._currentTCPState = constants.TCPStates.CLOSED;
+	this._retransmissionTimer = -1
+	this._retransmissionTime = constants.INITIAL_RETRANSMISSION_INTERVAL;
 	this._nextSequenceNumber = this._baseSequenceNumber + 1;
-	this._retransmissionQueue = {};
+	this._nextExpectedSequenceNumber = 0;
+	this._retransmissionQueue = [];
+	this._sendingQueue = [];
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
-	this._sendInterval = constants.INITIAL_SEND_INTERVAL;
 }
+util.inherits(Sender, EventEmitter);
 
 Sender.prototype.send = function (data) {
-	var chunks = helpers.splitArrayLike(data, constants.UDP_SAFE_SEGMENT_SIZE);
-	this._sendingQueue = this._sendingQueue.concat(chunks);
 	if (!this._sending) {
 		this._sendData()
 		this._sending = true;
 	}
 }
 
+Sender.prototype.addDataToQueue = function (data) {
+	let chunks = helpers.splitArrayLike(data, constants.UDP_SAFE_SEGMENT_SIZE);
+	this._sendingQueue = this._sendingQueue.concat(chunks);
+}
+
+Sender.prototype.stopRetransmissionTimer = function () {
+	clearTimeout(this._retransmissionTimer)
+}
+
+Sender.prototype.startRetranmissionTimer = function () {
+	this._retransmissionTimer = setTimeout(this._retransmit, this._retransmissionTime)
+}
+
+Sender.prototype._retransmit = function() {
+	for (packet of this._retransmissionQueue) {
+		this._packetSender.send(packet)
+	}
+	this._startRetransmissionTimer()
+};
+
 Sender.prototype.sendSyn = function () {
-	let syncPacket = new Packet(this._initialSequenceNumber, 0, constants.PacketTypes.SYN, Buffer.alloc(0))
-	this._packetSender.send(syncPacket)
+	console.log(this._initialSequenceNumber)
+	let synPacket = new Packet(this._initialSequenceNumber, 0, constants.PacketTypes.SYN, Buffer.alloc(0))
+	synPacket.on('ack', () => {
+		this.emit('syn_acked');
+	});
+	this._packetSender.send(synPacket);
+	this._retransmissionQueue = []
+	this._retransmissionQueue.push(synPacket)
+};
+
+Sender.prototype.setNextExpectedSequenceNumber = function (sequenceNumber) {
+	this._nextExpectedSequenceNumber = sequenceNumber;
 }
 
 Sender.prototype.sendSynAck = function (sequenceNumber) {
+	let synAckPacket = new Packet(this._initialSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
+	synAckPacket.on('ack', () => {
+		this.emit('syn_ack_acked');
+	});
+	this._packetSender.send(synAckPacket)
+	this._retransmissionQueue.push(synAckPacket)
 
-}
+};
 
 Sender.prototype.sendAck = function (sequenceNumber) {
 	this._packetSender.send(new Packet(this._nextSequenceNumber, sequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
+};
+
+Sender.prototype.sendFin = function () {
+	let finPacket = new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.FIN, Buffer.alloc(0))
+	finPacket.on('ack', () => {
+		this.emit('fin_acked');
+	});
+	this._packetSender.send(finPacket)
+	this._retransmissionQueue.push(finPacket)
+}
+
+Sender.prototype._incrementSequenceNumber = function () {
+	this._nextSequenceNumber +=1;
 }
 
 Sender.prototype._sendData = function () {
-	var self = this;
-	if (this._lostList.length) {
-		var sequenceNumber = this._lostList.shift()
-		var packet = this._window[sequenceNumber]
+	if (this._retransmissionQueue.length < constants.INITIAL_MAX_WINDOW_SIZE){
+		let payload = this._sendingQueue.shift();
+		let sequenceNumber = this._nextSequenceNumber;
+		this._incrementSequenceNumber();
+		let packet = new Packet(sequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.DATA, payload);
 		this._packetSender.send(packet)
-	} else if (this._sendingQueue.length && Object.keys(this._window).length < constants.INITIAL_MAX_WINDOW_SIZE) {
-		var payload = this._sendingQueue.shift();
-		var sequenceNumber = this._nextSequenceNumber;
-		var packet = new Packet(constants.PacketTypes.DATA, this._nextSequenceNumber, payload);
-		this._nextSequenceNumber += 1;
-		this._window[sequenceNumber] = packet
-	} else {
-		//we wait 
-	}
-	if (this._enable){
-		setTimeout(this._sendData, this._sendInterval)
-	}
-}
+		this._retransmissionQueue.push(packet)
 
-Sender.prototype.positiveAck = function (sequenceNumber) {
-	if (sequenceNumber === this._baseSequenceNumber) {
-		this._isSynched = true;
 	} else {
+		// we wait
+	}
+};
 
+Sender.prototype.verifyAck = function (sequenceNumber) {
+	while (this._retransmissionQueue.length && this._retransmissionQueue[0].getSequenceNumber() <= sequenceNumber) {
+		let packet = this._retransmissionQueue.shift();
+		packet.acknowledge();
 	}
 }
