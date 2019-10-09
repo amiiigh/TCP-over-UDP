@@ -24,6 +24,9 @@ function Connection(packetSender) {
 	this._sender.on('fin_acked', () => {
 		this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_2)
 	});
+	this._receiver.on('send_ack', (sequenceNumber) => {
+		this._sender.sendAck(sequenceNumber);
+	})
 	this._receiver.on('data', function (data) {
 		self.emit('data', data)
 	});
@@ -48,7 +51,7 @@ Connection.prototype.receive = function (packet) {
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			if (packet.getPacketType() === constants.PacketTypes.SYN) {
-				// this._sender.setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1)
+				this._receiver.setInitialSequenceNumber(packet.getSequenceNumber())
 				this._sender.sendSynAck(packet.getSequenceNumber());
 				this._changeCurrentTCPState(constants.TCPStates.SYN_RCVD)
 			}
@@ -56,14 +59,13 @@ Connection.prototype.receive = function (packet) {
 		case constants.TCPStates.SYN_SENT:
 			if (packet.getPacketType() === constants.PacketTypes.SYN_ACK) {
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
-				// this._sender.setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1)
 				this._sender.sendAck(packet.getSequenceNumber())
 			}
 			break;
 		case constants.TCPStates.SYN_RCVD:
 			if (packet.getPacketType() === constants.PacketTypes.ACK) {
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
-			}
+			} // TODO check data too I might get stuck here
 			break;
 		case constants.TCPStates.ESTABLISHED:
 			switch(packet.getPacketType()) {
@@ -74,16 +76,16 @@ Connection.prototype.receive = function (packet) {
 					this._sender.sendFinAck(packet.getSequenceNumber());
 					this._changeCurrentTCPState(constants.TCPStates.LAST_ACK)
 					break;
-				default:
-					console.log('here')
-					// this._receiver.receive(packet);
+				case constants.PacketTypes.DATA:
+					this._receiver.receive(packet);
+					break;
 			}
 			break;
 		case constants.TCPStates.LAST_ACK:
 			if (packet.getPacketType() === constants.PacketTypes.ACK) {
 				this._sender.verifyAck(packet.getAcknowledgementNumber());
 				this._changeCurrentTCPState(constants.TCPStates.CLOSED)
-						//delete the connection here !
+				this.emit('close');
 			}
 			break;
 		case constants.TCPStates.FIN_WAIT_1:

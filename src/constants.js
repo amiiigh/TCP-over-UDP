@@ -21,6 +21,7 @@ module.exports.CongestionControlStates = {
 	'CONGESTION_AVOIDANCE': 1,
 	'FAST_RECOVERY': 2
 }
+module.exports.INITIAL_RETRANSMISSION_INTERVAL = 3000;
 module.exports.CLOSE_WAIT_TIME = 30000;
 module.exports.SYNC_INTERVAL = 100;
 module.exports.INITIAL_SEND_INTERVAL = 50;

@@ -14,10 +14,12 @@ var totalDataSize = 0
 packetSender = new rudp.PacketSender(clientSocket, serverAddress, serverPort);
 connection = new rudp.Connection(packetSender);
 
-readStream.on('data', function(chunk) {
-	totalDataSize += chunk.length
-	connection.write(chunk)
-});
+// readStream.on('data', function(chunk) {
+// 	totalDataSize += chunk.length
+// 	connection.write(chunk)
+// });
+
+connection.write(Buffer.from('Hello'))
 
 clientSocket.on('message', function (message, rinfo) {
     var packet = new rudp.Packet(message);

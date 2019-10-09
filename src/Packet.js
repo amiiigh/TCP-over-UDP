@@ -92,6 +92,9 @@ Packet.prototype.toBuffer = function() {
         case constants.PacketTypes.SYN_ACK:
         retval.writeUInt32BE(10, 8)
         break;
+        case constants.PacketTypes.DATA:
+        retval.writeUInt32BE(0, 8)
+        break;        
         default:
         break;
     }

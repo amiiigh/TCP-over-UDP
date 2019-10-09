@@ -17,6 +17,13 @@ function Sender(packetSender) {
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
+
+	this._startRetransmissionTimer();
+	this.on('ready', () => {
+		if (this._sending) {
+			this._sendData();
+		}
+	})
 }
 util.inherits(Sender, EventEmitter);
 
@@ -32,16 +39,20 @@ Sender.prototype.addDataToQueue = function (data) {
 	this._sendingQueue = this._sendingQueue.concat(chunks);
 }
 
-Sender.prototype.stopRetransmissionTimer = function () {
+Sender.prototype._stopRetransmissionTimer = function () {
 	clearTimeout(this._retransmissionTimer)
 }
 
-Sender.prototype.startRetranmissionTimer = function () {
-	this._retransmissionTimer = setTimeout(this._retransmit, this._retransmissionTime)
+Sender.prototype._startRetransmissionTimer = function () {
+	this._retransmissionTimer = setTimeout(() => {
+		this._retransmit();
+	}, this._retransmissionTime)
 }
 
-Sender.prototype._retransmit = function() {
+Sender.prototype._retransmit = function () {
+	console.log(this._retransmissionQueue)
 	for (packet of this._retransmissionQueue) {
+		console.log('retransmitting')
 		this._packetSender.send(packet)
 	}
 	this._startRetransmissionTimer()
@@ -93,23 +104,34 @@ Sender.prototype._incrementSequenceNumber = function () {
 	this._nextSequenceNumber +=1;
 }
 
+Sender.prototype._haveDataInQueue = function () {
+	return this._sendingQueue.length !== 0;
+}
+
+Sender.prototype._windowHasSpace = function () {
+	return this._retransmissionQueue.length < this._maxWindowSize;
+}
+
 Sender.prototype._sendData = function () {
-	if (this._retransmissionQueue.length < constants.INITIAL_MAX_WINDOW_SIZE){
+	while (this._haveDataInQueue() && this._windowHasSpace()) {
 		let payload = this._sendingQueue.shift();
 		let sequenceNumber = this._nextSequenceNumber;
 		this._incrementSequenceNumber();
 		let packet = new Packet(sequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.DATA, payload);
 		this._packetSender.send(packet)
 		this._retransmissionQueue.push(packet)
-
-	} else {
-		// we wait
 	}
 };
 
 Sender.prototype.verifyAck = function (sequenceNumber) {
-	while (this._retransmissionQueue.length && this._retransmissionQueue[0].getSequenceNumber() <= sequenceNumber) {
+	if (sequenceNumber > this._nextExpectedSequenceNumber) {
+		this._nextExpectedSequenceNumber = sequenceNumber + 1;
+	}
+	while (this._retransmissionQueue.length && this._retransmissionQueue[0].getSequenceNumber() < sequenceNumber) {
 		let packet = this._retransmissionQueue.shift();
 		packet.acknowledge();
+	}
+	if (this._retransmissionQueue.length < this._maxWindowSize) {
+		this.emit('ready')
 	}
 }
