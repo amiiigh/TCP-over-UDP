@@ -12,7 +12,7 @@ function Sender(packetSender) {
 	this._currentCongestionControlState = constants.CongestionControlStates.SLOW_START;
 	this._retransmissionTimer = -1
 	this._retransmissionTime = constants.INITIAL_RETRANSMISSION_INTERVAL;
-	this._nextSequenceNumber = this._baseSequenceNumber + 1;
+	this._nextSequenceNumber = 0;
 	this._nextExpectedSequenceNumber = 0;
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
@@ -48,23 +48,27 @@ Sender.prototype._retransmit = function() {
 };
 
 Sender.prototype.sendSyn = function () {
-	console.log(this._initialSequenceNumber)
 	let synPacket = new Packet(this._initialSequenceNumber, 0, constants.PacketTypes.SYN, Buffer.alloc(0))
-	synPacket.on('ack', () => {
+	synPacket.on('acknowledge', () => {
 		this.emit('syn_acked');
 	});
+	this._nextSequenceNumber = this._initialSequenceNumber + 1;
 	this._packetSender.send(synPacket);
 	this._retransmissionQueue = []
 	this._retransmissionQueue.push(synPacket)
 };
+
+Sender.prototype.getNextExpectedSequenceNumber = function () {
+	return this._nextExpectedSequenceNumber;
+}
 
 Sender.prototype.setNextExpectedSequenceNumber = function (sequenceNumber) {
 	this._nextExpectedSequenceNumber = sequenceNumber;
 }
 
 Sender.prototype.sendSynAck = function (sequenceNumber) {
-	let synAckPacket = new Packet(this._initialSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
-	synAckPacket.on('ack', () => {
+	let synAckPacket = new Packet(this._initialSequenceNumber, sequenceNumber + 1, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
+	synAckPacket.on('acknowledge', () => {
 		this.emit('syn_ack_acked');
 	});
 	this._packetSender.send(synAckPacket)
@@ -73,12 +77,12 @@ Sender.prototype.sendSynAck = function (sequenceNumber) {
 };
 
 Sender.prototype.sendAck = function (sequenceNumber) {
-	this._packetSender.send(new Packet(this._nextSequenceNumber, sequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
+	this._packetSender.send(new Packet(this._nextSequenceNumber, sequenceNumber + 1, constants.PacketTypes.ACK, Buffer.alloc(0)))
 };
 
 Sender.prototype.sendFin = function () {
 	let finPacket = new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.FIN, Buffer.alloc(0))
-	finPacket.on('ack', () => {
+	finPacket.on('acknowledge', () => {
 		this.emit('fin_acked');
 	});
 	this._packetSender.send(finPacket)

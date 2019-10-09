@@ -45,19 +45,18 @@ Connection.prototype.send = function (data) {
 };
 
 Connection.prototype.receive = function (packet) {
-	console.log('got:', helpers.getKeyByValue(constants.PacketTypes, packet.getPacketType()))
-	console.log(packet.toObject())
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			if (packet.getPacketType() === constants.PacketTypes.SYN) {
+				// this._sender.setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1)
 				this._sender.sendSynAck(packet.getSequenceNumber());
 				this._changeCurrentTCPState(constants.TCPStates.SYN_RCVD)
 			}
 			break;
 		case constants.TCPStates.SYN_SENT:
 			if (packet.getPacketType() === constants.PacketTypes.SYN_ACK) {
-				console.log('here', packet.getSequenceNumber(), packet.getAcknowledgementNumber())
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
+				// this._sender.setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1)
 				this._sender.sendAck(packet.getSequenceNumber())
 			}
 			break;
@@ -111,7 +110,7 @@ Connection.prototype.receive = function (packet) {
 };
 
 Connection.prototype._changeCurrentTCPState = function (newState) {
-	console.log('change state:', helpers.getKeyByValue(constants.TCPStates, this._currentTCPState), '->', helpers.getKeyByValue(constants.TCPStates, newState))
+	console.log(helpers.getKeyByValue(constants.TCPStates, this._currentTCPState), '->', helpers.getKeyByValue(constants.TCPStates, newState))
 	this._currentTCPState = newState;
 }
 
