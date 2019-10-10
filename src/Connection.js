@@ -24,8 +24,14 @@ function Connection(packetSender) {
 	this._sender.on('fin_acked', () => {
 		this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_2)
 	});
+	this._sender.on('max_number_of_tries_reached', () => {
+		console.log('maximum number of tries reached')
+	})
 	this._receiver.on('send_ack', (sequenceNumber) => {
-		this._sender.sendAck(sequenceNumber);
+		this._sender.sendAck(sequenceNumber, false);
+	})
+	this._receiver.on('restart_retransmission_timer', () => {
+		this._sender.restartRetransmissionTimer()
 	})
 	this._receiver.on('data', function (data) {
 		self.emit('data', data)

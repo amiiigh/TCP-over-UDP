@@ -16,6 +16,7 @@ function Sender(packetSender) {
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
+	this._delayedAckTimer = null;
 
 	this._startRetransmissionTimer();
 	this.on('ready', () => {
@@ -41,16 +42,30 @@ Sender.prototype._stopRetransmissionTimer = function () {
 }
 
 Sender.prototype._startRetransmissionTimer = function () {
+	this._numberOfRetransmission = 0;
 	this._retransmissionTimer = setTimeout(() => {
 		this._retransmit();
 	}, this._retransmissionTime)
 }
 
+Sender.prototype.restartRetransmissionTimer = function () {
+	this._stopRetransmissionTimer();
+	this._startRetransmissionTimer();
+}
+
 Sender.prototype._retransmit = function () {
-	for (packet of this._retransmissionQueue) {
-		this._packetSender.send(packet)
+	this._numberOfRetransmission += 1;
+	if (this._numberOfRetransmission > constants.MAX_NUMBER_OF_RETRANSMISSION) {
+		this._stopRetransmissionTimer();
+		this.emit('max_number_of_tries_reached');
+	} else {
+		for (packet of this._retransmissionQueue) {
+			this._packetSender.send(packet)
+		}
+		this._retransmissionTimer = setTimeout(() => {
+			this._retransmit();
+		}, this._retransmissionTime)
 	}
-	this._startRetransmissionTimer()
 };
 
 Sender.prototype.sendSyn = function () {
@@ -75,9 +90,16 @@ Sender.prototype.sendSynAck = function (nextExpectedSequenceNumber) {
 	this._retransmissionQueue.push(synAckPacket)
 };
 
-Sender.prototype.sendAck = function (nextExpectedSequenceNumber) {
+Sender.prototype.sendAck = function (nextExpectedSequenceNumber, immediate = true) {
 	this._nextExpectedSequenceNumber = nextExpectedSequenceNumber;
-	this._packetSender.send(new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
+	if (immediate === true) {
+		this._packetSender.send(new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
+	} else if (immediate === false && this._delayedAckTimer === null) {
+		this._delayedAckTimer = setTimeout(()=> {
+			this.sendAck(this._nextExpectedSequenceNumber, true);
+			this._delayedAckTimer = null;
+		}, constants.DELAYED_ACK_TIME)
+	}
 };
 
 Sender.prototype.sendFin = function () {

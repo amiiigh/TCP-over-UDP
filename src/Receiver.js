@@ -42,7 +42,7 @@ Receiver.prototype._pushIfExpectedSequence = function (packet) {
 	if (packet.getSequenceNumber() === this._nextExpectedSequenceNumber) {
 		this.emit('data', packet.getPayload());
 		this._nextExpectedSequenceNumber += 1;
-		this.emit('reset_timer');
+		this.emit('restart_retransmission_timer');
 		this.emit('send_ack', this._nextExpectedSequenceNumber)
 		this._packets.shift();
 		if (this._packets.currentNode() !== null) {
