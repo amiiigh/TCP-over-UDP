@@ -13,6 +13,8 @@ list.insert(5);
 // console.log(list.toArray())
 list.insert(6);
 list.insert(7);
+list.insert(7);
+list.insert(7);
 list.insert(1);
 list.insert(9);
 list.insert(1);

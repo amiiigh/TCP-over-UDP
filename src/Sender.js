@@ -13,7 +13,6 @@ function Sender(packetSender) {
 	this._retransmissionTimer = -1
 	this._retransmissionTime = constants.INITIAL_RETRANSMISSION_INTERVAL;
 	this._nextSequenceNumber = 0;
-	this._nextExpectedSequenceNumber = 0;
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
@@ -27,11 +26,9 @@ function Sender(packetSender) {
 }
 util.inherits(Sender, EventEmitter);
 
-Sender.prototype.send = function (data) {
-	if (!this._sending) {
-		this._sendData()
-		this._sending = true;
-	}
+Sender.prototype.send = function () {
+	this._sending = true;
+	this._sendData()
 }
 
 Sender.prototype.addDataToQueue = function (data) {
@@ -50,9 +47,7 @@ Sender.prototype._startRetransmissionTimer = function () {
 }
 
 Sender.prototype._retransmit = function () {
-	console.log(this._retransmissionQueue)
 	for (packet of this._retransmissionQueue) {
-		console.log('retransmitting')
 		this._packetSender.send(packet)
 	}
 	this._startRetransmissionTimer()
@@ -69,26 +64,20 @@ Sender.prototype.sendSyn = function () {
 	this._retransmissionQueue.push(synPacket)
 };
 
-Sender.prototype.getNextExpectedSequenceNumber = function () {
-	return this._nextExpectedSequenceNumber;
-}
-
-Sender.prototype.setNextExpectedSequenceNumber = function (sequenceNumber) {
-	this._nextExpectedSequenceNumber = sequenceNumber;
-}
-
-Sender.prototype.sendSynAck = function (sequenceNumber) {
-	let synAckPacket = new Packet(this._initialSequenceNumber, sequenceNumber + 1, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
+Sender.prototype.sendSynAck = function (nextExpectedSequenceNumber) {
+	this._nextExpectedSequenceNumber = nextExpectedSequenceNumber;
+	this._nextSequenceNumber = this._initialSequenceNumber + 1;
+	let synAckPacket = new Packet(this._initialSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
 	synAckPacket.on('acknowledge', () => {
 		this.emit('syn_ack_acked');
 	});
 	this._packetSender.send(synAckPacket)
 	this._retransmissionQueue.push(synAckPacket)
-
 };
 
-Sender.prototype.sendAck = function (sequenceNumber) {
-	this._packetSender.send(new Packet(this._nextSequenceNumber, sequenceNumber + 1, constants.PacketTypes.ACK, Buffer.alloc(0)))
+Sender.prototype.sendAck = function (nextExpectedSequenceNumber) {
+	this._nextExpectedSequenceNumber = nextExpectedSequenceNumber;
+	this._packetSender.send(new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
 };
 
 Sender.prototype.sendFin = function () {
@@ -101,11 +90,7 @@ Sender.prototype.sendFin = function () {
 }
 
 Sender.prototype._incrementSequenceNumber = function () {
-	this._nextSequenceNumber +=1;
-}
-
-Sender.prototype._haveDataInQueue = function () {
-	return this._sendingQueue.length !== 0;
+	this._nextSequenceNumber += 1;
 }
 
 Sender.prototype._windowHasSpace = function () {
@@ -113,7 +98,7 @@ Sender.prototype._windowHasSpace = function () {
 }
 
 Sender.prototype._sendData = function () {
-	while (this._haveDataInQueue() && this._windowHasSpace()) {
+	while (this._sendingQueue.length && this._windowHasSpace()) {
 		let payload = this._sendingQueue.shift();
 		let sequenceNumber = this._nextSequenceNumber;
 		this._incrementSequenceNumber();

@@ -1,0 +1,4 @@
+out
+benchmark/testfiles/*
+node_modules
+npm-debug.log

@@ -20,16 +20,17 @@ serverSocket.on('message', function (message, rinfo) {
 		console.log('new connection', addressKey)
 		connection = new rudp.Connection(new rudp.PacketSender(serverSocket, rinfo.address, rinfo.port));
 		connection.on('data', data => {
-			if (!timerIsRunning) {
-				timerIsRunning = true
-				startTime = process.hrtime();
-			}
+			// console.log(data.toString())
+			// if (!timerIsRunning) {
+			// 	timerIsRunning = true
+			// 	startTime = process.hrtime();
+			// }
 			totalSize += data.length
-			console.log(totalSize,'/',fileSize)
-			if (totalSize === fileSize) {
-				endTime = process.hrtime(startTime);
-				console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
-			}
+			console.log(totalSize)
+			// if (totalSize === fileSize) {
+			// 	endTime = process.hrtime(startTime);
+			// 	console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
+			// }
 		})
 		_connections[addressKey] = connection;
 	} else {	  

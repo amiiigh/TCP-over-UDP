@@ -48,24 +48,26 @@ Connection.prototype.send = function (data) {
 };
 
 Connection.prototype.receive = function (packet) {
+	// console.log('got:', packet)
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			if (packet.getPacketType() === constants.PacketTypes.SYN) {
 				this._receiver.setInitialSequenceNumber(packet.getSequenceNumber())
-				this._sender.sendSynAck(packet.getSequenceNumber());
+				this._sender.sendSynAck(this._receiver.getNextExpectedSequenceNumber());
 				this._changeCurrentTCPState(constants.TCPStates.SYN_RCVD)
 			}
 			break;
 		case constants.TCPStates.SYN_SENT:
 			if (packet.getPacketType() === constants.PacketTypes.SYN_ACK) {
+				this._receiver.setInitialSequenceNumber(packet.getSequenceNumber())
+				this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber())
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
-				this._sender.sendAck(packet.getSequenceNumber())
 			}
 			break;
 		case constants.TCPStates.SYN_RCVD:
 			if (packet.getPacketType() === constants.PacketTypes.ACK) {
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
-			} // TODO check data too I might get stuck here
+			}
 			break;
 		case constants.TCPStates.ESTABLISHED:
 			switch(packet.getPacketType()) {

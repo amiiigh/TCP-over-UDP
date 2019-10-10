@@ -1,4 +1,4 @@
-var rudp = require('./src');
+var rudp = require('../../../lib');
 var dgram = require('dgram');
 var fs = require('fs');
 var path = require('path');
@@ -21,14 +21,16 @@ readStream.on('data', function(chunk) {
 
 clientSocket.on('message', function (message, rinfo) {
     var packet = new rudp.Packet(message);
+    if (packet.getIsFinish()) {
+      clientSocket.close();
+      return;
+    }
     connection.receive(packet);
 });
 
-// connection.write(Buffer.from('HELLO'))
 // readStream.on('end', function() {
-// 	console.log(totalDataSize)
-// // 	var endTime = process.hrtime(startTime);
-// // 	console.log(chalk.bold.green('File',totalDataSize,  'has been sent', endTime[1]/1000000, ' ms'))
-// // 	// client.close()
-// // 	// clientSocket.close()
+// 	var endTime = process.hrtime(startTime);
+// 	console.log(chalk.bold.green('File',totalDataSize,  'has been sent', endTime[1]/1000000, ' ms'))
+// 	// client.close()
+// 	// clientSocket.close()
 // });
