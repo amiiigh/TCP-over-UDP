@@ -15,14 +15,19 @@ function Receiver(packetSender) {
 }
 util.inherits(Receiver, EventEmitter);
 
+
+Receiver.prototype.close = function () {
+	this._packets.clear();
+};
+
 Receiver.prototype.setInitialSequenceNumber = function (sequenceNumber) {
 	this._initialSequenceNumber = sequenceNumber;
 	this._nextExpectedSequenceNumber = sequenceNumber + 1;
-}
+};
 
 Receiver.prototype.getNextExpectedSequenceNumber = function () {
 	return this._nextExpectedSequenceNumber;
-}
+};
 
 Receiver.prototype.receive = function (packet) {
 	if (packet.getSequenceNumber() < this._nextExpectedSequenceNumber) {

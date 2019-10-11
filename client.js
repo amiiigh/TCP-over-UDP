@@ -25,6 +25,7 @@ clientSocket.on('message', function (message, rinfo) {
 });
 
 // connection.write(Buffer.from('HELLO'))
+// setTimeout(() => {connection.close()}, 5000);
 // readStream.on('end', function() {
 // 	console.log(totalDataSize)
 // // 	var endTime = process.hrtime(startTime);

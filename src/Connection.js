@@ -22,7 +22,12 @@ function Connection(packetSender) {
 		this.emit('connect')
 	});
 	this._sender.on('fin_acked', () => {
-		this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_2)
+		if (this._currentTCPState === constants.TCPStates.LAST_ACK) {
+			this._changeCurrentTCPState(constants.TCPStates.CLOSED);
+			this.emit('close');
+		} else if (this._currentTCPState === constants.TCPStates.FIN_WAIT_1){
+			this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_2);
+		}
 	});
 	this._sender.on('max_number_of_tries_reached', () => {
 		console.log('maximum number of tries reached')
@@ -35,6 +40,11 @@ function Connection(packetSender) {
 	})
 	this._receiver.on('data', function (data) {
 		self.emit('data', data)
+	});
+	this.on('close', () => {
+		console.log('im closed')
+		this._sender.close();
+		this._receiver.close();
 	});
 };
 
@@ -81,8 +91,10 @@ Connection.prototype.receive = function (packet) {
 					this._sender.verifyAck(packet.getAcknowledgementNumber())
 					break;
 				case constants.PacketTypes.FIN:
-					this._sender.sendFinAck(packet.getSequenceNumber());
-					this._changeCurrentTCPState(constants.TCPStates.LAST_ACK)
+					this._sender.sendAck(packet.getSequenceNumber() + 1);
+					this._changeCurrentTCPState(constants.TCPStates.CLOSE_WAIT);
+					this._sender.sendFin();
+					this._changeCurrentTCPState(constants.TCPStates.LAST_ACK);
 					break;
 				case constants.PacketTypes.DATA:
 					this._receiver.receive(packet);
@@ -92,8 +104,6 @@ Connection.prototype.receive = function (packet) {
 		case constants.TCPStates.LAST_ACK:
 			if (packet.getPacketType() === constants.PacketTypes.ACK) {
 				this._sender.verifyAck(packet.getAcknowledgementNumber());
-				this._changeCurrentTCPState(constants.TCPStates.CLOSED)
-				this.emit('close');
 			}
 			break;
 		case constants.TCPStates.FIN_WAIT_1:
@@ -103,7 +113,7 @@ Connection.prototype.receive = function (packet) {
 			break;
 		case constants.TCPStates.FIN_WAIT_2:
 			if (packet.getPacketType() === constants.PacketTypes.FIN) {
-				this._sender.sendAck(packet.getSequenceNumber())
+				this._sender.sendAck(packet.getSequenceNumber() + 1)
 				this._changeCurrentTCPState(constants.TCPStates.TIME_WAIT)
 				setTimeout(() => {
 					this._changeCurrentTCPState(constants.TCPStates.CLOSED)

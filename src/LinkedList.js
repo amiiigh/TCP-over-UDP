@@ -71,7 +71,7 @@ LinkedList.prototype.toArray = function () {
 	let currentNode = this._head;
 	let result = []
 	while (currentNode !== null) {
-		result.push(currentNode.value.getSequenceNumber());
+		result.push(currentNode.value);
 		currentNode = currentNode.next;
 	}
 	return result;
