@@ -5,15 +5,14 @@ var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 
 module.exports = Sender;
-function Sender(packetSender) {
+function Sender(connection, packetSender) {
 	this._packetSender = packetSender;
-	this._initialSequenceNumber = helpers.generateRandomNumber(constants.INITIAL_MAX_WINDOW_SIZE, constants.MAX_SEQUENCE_NUMBER)
+	this._connection = connection;
 	this._currentCongestionControlState = constants.CongestionControlStates.SLOW_START;
 	this._retransmissionTimer = -1;
 	this._retransmissionInterval = constants.Retransmission.INITIAL_RETRANSMISSION_INTERVAL;
 	this._estimatedRTT = 0;
 	this._devRTT = 0;
-	this._nextSequenceNumber = 0;
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
@@ -90,20 +89,17 @@ Sender.prototype._pushToRetransmissionQueue = function (packet) {
 };
 
 Sender.prototype.sendSyn = function () {
-	let synPacket = new Packet(this._initialSequenceNumber, 0, constants.PacketTypes.SYN, Buffer.alloc(0))
+	let synPacket = new Packet(this._connection.getInitialSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.SYN, Buffer.alloc(0))
 	synPacket.on('acknowledge', () => {
 		this.emit('syn_acked');
 	});
-	this._nextSequenceNumber = this._initialSequenceNumber + 1;
 	this._packetSender.send(synPacket);
 	this._retransmissionQueue = []
 	this._pushToRetransmissionQueue(synPacket)
 };
 
-Sender.prototype.sendSynAck = function (nextExpectedSequenceNumber) {
-	this._nextExpectedSequenceNumber = nextExpectedSequenceNumber;
-	this._nextSequenceNumber = this._initialSequenceNumber + 1;
-	let synAckPacket = new Packet(this._initialSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
+Sender.prototype.sendSynAck = function () {
+	let synAckPacket = new Packet(this._connection.getInitialSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.SYN_ACK, Buffer.alloc(0))
 	synAckPacket.on('acknowledge', () => {
 		this.emit('syn_ack_acked');
 	});
@@ -111,13 +107,12 @@ Sender.prototype.sendSynAck = function (nextExpectedSequenceNumber) {
 	this._pushToRetransmissionQueue(synAckPacket)
 };
 
-Sender.prototype.sendAck = function (nextExpectedSequenceNumber, immediate = true) {
-	this._nextExpectedSequenceNumber = nextExpectedSequenceNumber;
+Sender.prototype.sendAck = function (immediate = true) {
 	if (immediate === true) {
-		this._packetSender.send(new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.ACK, Buffer.alloc(0)))
+		this._packetSender.send(new Packet(this._connection.getNextSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.ACK, Buffer.alloc(0)))
 	} else if (immediate === false && this._delayedAckTimer === null) {
 		this._delayedAckTimer = setTimeout(()=> {
-			this.sendAck(this._nextExpectedSequenceNumber, true);
+			this.sendAck();
 			this._delayedAckTimer = null;
 		}, constants.DELAYED_ACK_TIME)
 	}
@@ -132,16 +127,12 @@ Sender.prototype._updateRTT = function (sampleRTT) {
 }
 
 Sender.prototype.sendFin = function () {
-	let finPacket = new Packet(this._nextSequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.FIN, Buffer.alloc(0))
+	let finPacket = new Packet(this._connection.getNextSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.FIN, Buffer.alloc(0))
 	finPacket.on('acknowledge', () => {
 		this.emit('fin_acked');
 	});
 	this._packetSender.send(finPacket)
 	this._pushToRetransmissionQueue(finPacket)
-}
-
-Sender.prototype._incrementSequenceNumber = function () {
-	this._nextSequenceNumber = (this._nextSequenceNumber + 1) % constants.MAX_SEQUENCE_NUMBER;
 }
 
 Sender.prototype._windowHasSpace = function () {
@@ -151,22 +142,18 @@ Sender.prototype._windowHasSpace = function () {
 Sender.prototype._sendData = function () {
 	while (this._sendingQueue.length && this._windowHasSpace()) {
 		let payload = this._sendingQueue.shift();
-		let sequenceNumber = this._nextSequenceNumber;
-		this._incrementSequenceNumber();
-		let packet = new Packet(sequenceNumber, this._nextExpectedSequenceNumber, constants.PacketTypes.DATA, payload);
+		let packet = new Packet(this._connection.getNextSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.DATA, payload);
+		this._connection.incrementNextSequenceNumber();
 		this._packetSender.send(packet)
 		this._pushToRetransmissionQueue(packet)
 	}
 };
 
 Sender.prototype.verifyAck = function (sequenceNumber) {
-	if (sequenceNumber > this._nextExpectedSequenceNumber) {
-		this._nextExpectedSequenceNumber = (sequenceNumber + 1) % constants.MAX_SEQUENCE_NUMBER;
-	}
 	while (this._retransmissionQueue.length && this._retransmissionQueue[0].packet.getSequenceNumber() < sequenceNumber) {
 		let packetObject = this._retransmissionQueue.shift();
 		packetObject.packet.acknowledge();
-		if (packetObject.retransmitted === false) {
+		if (packetObject.retransmitted === false && packetObject.packet.getSequenceNumber() % 5 === 0) {
 			let sampleRTT = process.hrtime(packetObject.sentTime)
 			this._updateRTT(sampleRTT);
 		}

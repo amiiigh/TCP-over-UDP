@@ -8,8 +8,14 @@ const util = require('util');
 module.exports = Connection;
 function Connection(packetSender) {
 	this._currentTCPState = constants.TCPStates.LISTEN;
-	this._sender = new Sender(packetSender);
-	this._receiver = new Receiver(packetSender);
+	this._sender = new Sender(this, packetSender);
+	this._receiver = new Receiver(this, packetSender);
+
+
+	this._initialSequenceNumber = helpers.generateRandomNumber(constants.INITIAL_MAX_WINDOW_SIZE, constants.MAX_SEQUENCE_NUMBER);
+	this._nextSequenceNumber = 0;
+	this._nextExpectedSequenceNumber = 0;
+
 	Duplex.call(this);
 	var self = this;
 	this._sender.on('syn_ack_acked', () => {
@@ -32,8 +38,8 @@ function Connection(packetSender) {
 	this._sender.on('max_number_of_tries_reached', () => {
 		console.log('maximum number of tries reached')
 	})
-	this._receiver.on('send_ack', (sequenceNumber) => {
-		this._sender.sendAck(sequenceNumber, false);
+	this._receiver.on('send_ack', () => {
+		this._sender.sendAck(false);
 	})
 	this._receiver.on('restart_retransmission_timer', () => {
 		this._sender.restartRetransmissionTimer()
@@ -50,11 +56,40 @@ function Connection(packetSender) {
 
 util.inherits(Connection, Duplex);
 
+Connection.prototype.getInitialSequenceNumber = function () {
+	return this._initialSequenceNumber;
+};
+
+Connection.prototype.getNextExpectedSequenceNumber = function () {
+	return this._nextExpectedSequenceNumber;
+};
+
+Connection.prototype.getNextSequenceNumber = function () {
+	return this._nextSequenceNumber;
+};
+
+Connection.prototype._setNextSequenceNumber = function (sequenceNumber) {
+	this._nextSequenceNumber = sequenceNumber;
+}
+
+Connection.prototype._setNextExpectedSequenceNumber = function (sequenceNumber) {
+	this._nextExpectedSequenceNumber = sequenceNumber;
+}
+
+Connection.prototype.incrementNextSequenceNumber = function () {
+	this._nextSequenceNumber = (this._nextSequenceNumber + 1) % constants.MAX_SEQUENCE_NUMBER;
+};
+
+Connection.prototype.incrementNextExpectedSequenceNumber = function () {
+	this._nextExpectedSequenceNumber = (this._nextExpectedSequenceNumber + 1) % constants.MAX_SEQUENCE_NUMBER;
+}
+
 Connection.prototype.send = function (data) {
 	this._sender.addDataToQueue(data)
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			this._sender.sendSyn();
+			this._setNextSequenceNumber(this.getInitialSequenceNumber() + 1);
 			this._changeCurrentTCPState(constants.TCPStates.SYN_SENT)
 			break;
 		case constants.TCPStates.ESTABLISHED:
@@ -68,15 +103,16 @@ Connection.prototype.receive = function (packet) {
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			if (packet.getPacketType() === constants.PacketTypes.SYN) {
-				this._receiver.setInitialSequenceNumber(packet.getSequenceNumber())
-				this._sender.sendSynAck(this._receiver.getNextExpectedSequenceNumber());
+				this._setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1);
+				this._setNextSequenceNumber(this.getInitialSequenceNumber() + 1);
+				this._sender.sendSynAck();
 				this._changeCurrentTCPState(constants.TCPStates.SYN_RCVD)
 			}
 			break;
 		case constants.TCPStates.SYN_SENT:
 			if (packet.getPacketType() === constants.PacketTypes.SYN_ACK) {
-				this._receiver.setInitialSequenceNumber(packet.getSequenceNumber())
-				this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber())
+				this._setNextExpectedSequenceNumber(packet.getSequenceNumber() + 1);
+				this._sender.sendAck();
 				this._sender.verifyAck(packet.getAcknowledgementNumber())
 			}
 			break;
@@ -91,7 +127,7 @@ Connection.prototype.receive = function (packet) {
 					this._sender.verifyAck(packet.getAcknowledgementNumber())
 					break;
 				case constants.PacketTypes.FIN:
-					this._sender.sendAck(packet.getSequenceNumber() + 1);
+					this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber());
 					this._changeCurrentTCPState(constants.TCPStates.CLOSE_WAIT);
 					this._sender.sendFin();
 					this._changeCurrentTCPState(constants.TCPStates.LAST_ACK);
@@ -113,7 +149,7 @@ Connection.prototype.receive = function (packet) {
 			break;
 		case constants.TCPStates.FIN_WAIT_2:
 			if (packet.getPacketType() === constants.PacketTypes.FIN) {
-				this._sender.sendAck(packet.getSequenceNumber() + 1)
+				this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber());
 				this._changeCurrentTCPState(constants.TCPStates.TIME_WAIT)
 				setTimeout(() => {
 					this._changeCurrentTCPState(constants.TCPStates.CLOSED)

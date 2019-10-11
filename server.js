@@ -20,6 +20,7 @@ serverSocket.on('message', function (message, rinfo) {
 		console.log('new connection', addressKey)
 		connection = new rudp.Connection(new rudp.PacketSender(serverSocket, rinfo.address, rinfo.port));
 		connection.on('data', data => {
+			// connection.write(data);
 			// console.log(data.toString())
 			// if (!timerIsRunning) {
 			// 	timerIsRunning = true
