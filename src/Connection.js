@@ -39,11 +39,11 @@ function Connection(packetSender) {
 		console.log('maximum number of tries reached')
 	})
 	this._receiver.on('send_ack', () => {
-		this._sender.sendAck(false);
+		this._sender.sendAck();
 	})
-	this._receiver.on('restart_retransmission_timer', () => {
-		this._sender.restartRetransmissionTimer()
-	})
+	// this._receiver.on('restart_timeout_timer', () => {
+	// 	this._sender.restartTimeoutTimer()
+	// })
 	this._receiver.on('data', function (data) {
 		self.emit('data', data)
 	});

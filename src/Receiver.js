@@ -20,14 +20,13 @@ Receiver.prototype.close = function () {
 
 Receiver.prototype.receive = function (packet) {
 	if (packet.getSequenceNumber() < this._connection.getNextExpectedSequenceNumber()) {
-		this.emit('send_ack', this._connection.getNextExpectedSequenceNumber())
-		return;
+		this.emit('send_ack');
 	} else if (packet.getSequenceNumber() >= this._connection.getNextExpectedSequenceNumber()) {
 		let insertionResult = this._packets.insert(packet);
 		if (insertionResult === LinkedList.InsertionResult.INSERTED) {
 			this._pushIfExpectedSequence(packet);
 		} else if (insertionResult === LinkedList.InsertionResult.EXISTS) {
-			this.emit('send_ack', this._connection.getNextExpectedSequenceNumber())
+			this.emit('send_ack')
 		}
 	}
 };
@@ -36,8 +35,7 @@ Receiver.prototype._pushIfExpectedSequence = function (packet) {
 	if (packet.getSequenceNumber() === this._connection.getNextExpectedSequenceNumber()) {
 		this.emit('data', packet.getPayload());
 		this._connection.incrementNextExpectedSequenceNumber();
-		this.emit('restart_retransmission_timer'); // why here ?
-		this.emit('send_ack', this._connection.getNextExpectedSequenceNumber())
+		this.emit('send_ack')
 		this._packets.shift();
 		if (this._packets.currentNode() !== null) {
 			this._pushIfExpectedSequence(this._packets.currentValue());

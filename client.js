@@ -24,8 +24,11 @@ clientSocket.on('message', function (message, rinfo) {
     connection.receive(packet);
 });
 
-connection.write(Buffer.from('HELLO'));
+// connection.write(Buffer.from('HELLO'));
 
+connection.on('data', (data) => {
+	console.log(data.toString())
+})
 // setTimeout(() => {connection.close()}, 5000);
 // readStream.on('end', function() {
 // 	console.log(totalDataSize)
