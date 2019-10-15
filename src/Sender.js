@@ -196,6 +196,7 @@ Sender.prototype.verifyAck = function (sequenceNumber) {
 				case constants.CongestionControl.States.FAST_RECOVERY:
 					this._maxWindowSize = this._slowStartThreshold;
 					this._duplicateAckCount = 0;
+					this._congestionAvoidanceCounter = 0;
 					this._changeCurrentCongestionControlState(constants.CongestionControl.States.CONGESTION_AVOIDANCE);
 					break;
 			}
