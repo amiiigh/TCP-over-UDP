@@ -22,16 +22,16 @@ serverSocket.on('message', function (message, rinfo) {
 		connection.on('data', data => {
 			// connection.write(data);
 			// console.log(data.toString())
-			// if (!timerIsRunning) {
-			// 	timerIsRunning = true
-			// 	startTime = process.hrtime();
-			// }
+			if (!timerIsRunning) {
+				timerIsRunning = true
+				startTime = process.hrtime();
+			}
 			totalSize += data.length
 			console.log(totalSize)
-			// if (totalSize === fileSize) {
-			// 	endTime = process.hrtime(startTime);
-			// 	console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
-			// }
+			if (totalSize === fileSize) {
+				endTime = process.hrtime(startTime);
+				console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
+			}
 		})
 		_connections[addressKey] = connection;
 	} else {	  

@@ -124,7 +124,7 @@ Connection.prototype.receive = function (packet) {
 					this._sender.verifyAck(packet.getAcknowledgementNumber())
 					break;
 				case constants.PacketTypes.FIN:
-					this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber());
+					this._sender.sendAck();
 					this._changeCurrentTCPState(constants.TCPStates.CLOSE_WAIT);
 					this._sender.sendFin();
 					this._changeCurrentTCPState(constants.TCPStates.LAST_ACK);
@@ -146,7 +146,7 @@ Connection.prototype.receive = function (packet) {
 			break;
 		case constants.TCPStates.FIN_WAIT_2:
 			if (packet.getPacketType() === constants.PacketTypes.FIN) {
-				this._sender.sendAck(this._receiver.getNextExpectedSequenceNumber());
+				this._sender.sendAck();
 				this._changeCurrentTCPState(constants.TCPStates.TIME_WAIT)
 				setTimeout(() => {
 					this._changeCurrentTCPState(constants.TCPStates.CLOSED)
@@ -156,7 +156,7 @@ Connection.prototype.receive = function (packet) {
 			break;
 		case constants.TCPStates.TIME_WAIT:
 			if (packet.getPacketType() === constants.PacketTypes.FIN) {
-				this._sender.sendAck(packet.getSequenceNumber())
+				this._sender.sendAck()
 			}
 			break;
 	}
