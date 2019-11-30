@@ -24,7 +24,15 @@ clientSocket.on('message', function (message, rinfo) {
     connection.receive(packet);
 });
 
-// connection.write(Buffer.from('HELLO'));
+setTimeout(() => {
+	connection.close()
+}, 1000)
+
+connection.on('close', () => {
+	clientSocket.close(() => {
+		console.log('closing the socket')
+	})
+})
 
 connection.on('data', (data) => {
 	console.log(data.toString())
