@@ -13,6 +13,7 @@ function Connection(packetSender) {
 	this._initialSequenceNumber = helpers.generateRandomNumber(constants.INITIAL_MAX_WINDOW_SIZE, constants.MAX_SEQUENCE_NUMBER);
 	this._nextSequenceNumber = 0;
 	this._nextExpectedSequenceNumber = 0;
+	this._connectionTimeoutTimer = null;
 
 	Duplex.call(this);
 	var self = this;
@@ -47,6 +48,22 @@ function Connection(packetSender) {
 };
 
 util.inherits(Connection, Duplex);
+
+Connection.prototype._stopTimeoutTimer = function () {
+	clearTimeout(this._connectionTimeoutTimer);
+	this._connectionTimeoutTimer = null;
+}
+
+Connection.prototype._startTimeoutTimer = function () {
+	this._connectionTimeoutTimer = setTimeout(() => {
+		this.emit('connection_timeout');
+	}, constants.CONNECTION_TIMEOUT_INTERVAL)
+}
+
+Connection.prototype._restartTimeoutTimer = function () {
+	this._stopTimeoutTimer();
+	this._startTimeoutTimer();
+}
 
 Connection.prototype.getInitialSequenceNumber = function () {
 	return this._initialSequenceNumber;
@@ -92,6 +109,7 @@ Connection.prototype.send = function (data) {
 
 Connection.prototype.receive = function (packet) {
 	// console.log('got:', packet)
+	this._restartTimeoutTimer();
 	switch(this._currentTCPState) {
 		case constants.TCPStates.LISTEN:
 			if (packet.getPacketType() === constants.PacketTypes.SYN) {
@@ -184,5 +202,6 @@ Connection.prototype._read = function (n) {
 }
 
 Connection.prototype._final = function (callback) {
-	callback()
+	this.close()
+	// callback()
 }

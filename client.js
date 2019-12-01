@@ -14,24 +14,29 @@ var totalDataSize = 0
 packetSender = new rudp.PacketSender(clientSocket, serverAddress, serverPort);
 connection = new rudp.Connection(packetSender);
 
-readStream.on('data', function(chunk) {
-	totalDataSize += chunk.length
-	connection.write(chunk)
-});
+// readStream.on('data', function(chunk) {
+// 	totalDataSize += chunk.length
+// 	connection.write(chunk)
+// });
 
 clientSocket.on('message', function (message, rinfo) {
     var packet = new rudp.Packet(message);
     connection.receive(packet);
 });
 
-setTimeout(() => {
-	connection.close()
-}, 1000)
+connection.write(Buffer.from('HEY'))
+// setTimeout(() => {
+// 	connection.end()
+// }, 1000)
 
 connection.on('close', () => {
 	clientSocket.close(() => {
 		console.log('closing the socket')
 	})
+})
+
+connection.on('connection_timeout', () => {
+	console.log('connection timeout')
 })
 
 connection.on('data', (data) => {

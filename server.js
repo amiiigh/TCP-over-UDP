@@ -19,6 +19,9 @@ serverSocket.on('message', function (message, rinfo) {
 	if (!_connections[addressKey]) {
 		console.log('new connection', addressKey)
 		connection = new rudp.Connection(new rudp.PacketSender(serverSocket, rinfo.address, rinfo.port));
+		connection.on('connection_timeout', () => {
+			console.log('connection timeout')
+		})
 		connection.on('data', data => {
 			// connection.write(data);
 			// console.log(data.toString())
