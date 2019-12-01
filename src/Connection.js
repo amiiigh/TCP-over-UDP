@@ -16,7 +16,7 @@ function Connection(packetSender) {
 	this._connectionTimeoutTimer = null;
 
 	Duplex.call(this);
-	var self = this;
+
 	this._sender.on('syn_ack_acked', () => {
 		this._changeCurrentTCPState(constants.TCPStates.ESTABLISHED)
 		this.emit('connect')
@@ -42,8 +42,8 @@ function Connection(packetSender) {
 	this._receiver.on('send_ack', () => {
 		this._sender.sendAck();
 	})
-	this._receiver.on('data', function (data) {
-		self.emit('data', data)
+	this._receiver.on('data', (data) => {
+		this.emit('data', data)
 	});
 };
 
@@ -56,6 +56,11 @@ Connection.prototype._stopTimeoutTimer = function () {
 
 Connection.prototype._startTimeoutTimer = function () {
 	this._connectionTimeoutTimer = setTimeout(() => {
+		this._changeCurrentTCPState(constants.TCPStates.CLOSED);
+		this._sender._stopTimeoutTimer();
+		this._sender.clear();
+		this._receiver.clear();
+		this.emit('close');
 		this.emit('connection_timeout');
 	}, constants.CONNECTION_TIMEOUT_INTERVAL)
 }
