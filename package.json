@@ -11,5 +11,8 @@
     "build": "babel --presets es2015 -d lib/ src"
   },
   "author": "Amirhossein Ghafari",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^3.0.0"
+  }
 }
