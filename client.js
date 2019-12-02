@@ -24,7 +24,9 @@ clientSocket.on('message', function (message, rinfo) {
     connection.receive(packet);
 });
 
-connection.write(Buffer.from('HEY'))
+clientSocket.send(Buffer.alloc(0), serverPort, serverAddress)
+connection.send(Buffer.from('hey'))
+clientSocket.send(Buffer.alloc(0), serverPort, serverAddress)
 // setTimeout(() => {
 // 	connection.end()
 // }, 1000)

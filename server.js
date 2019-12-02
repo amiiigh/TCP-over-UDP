@@ -14,6 +14,9 @@ var totalSize = 0
 const stats = fs.statSync(args[1]);
 var fileSize = stats.size
 serverSocket.on('message', function (message, rinfo) {
+	if (message.length < 12) {
+		return
+	}
 	var addressKey = rinfo.address + rinfo.port;
 	var connection;
 	if (!_connections[addressKey]) {
