@@ -56,6 +56,7 @@ Connection.prototype._stopTimeoutTimer = function () {
 
 Connection.prototype._startTimeoutTimer = function () {
 	this._connectionTimeoutTimer = setTimeout(() => {
+		console.log('connection timeout')
 		this._changeCurrentTCPState(constants.TCPStates.CLOSED);
 		this._sender._stopTimeoutTimer();
 		this._sender.clear();
