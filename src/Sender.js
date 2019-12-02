@@ -17,7 +17,7 @@ function Sender(connection, packetSender) {
 	this._slowStartThreshold = constants.CongestionControl.INITIAL_SLOW_START_THRESHOLD;
 	this._retransmissionQueue = [];
 	this._sendingQueue = [];
-	this._maxWindowSize = 1;
+	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
 	this._delayedAckTimer = null;
 
 	this._startTimeoutTimer();
@@ -61,14 +61,14 @@ Sender.prototype._timeout = function () {
 	switch(this._currentCongestionControlState) {
 		case constants.CongestionControl.States.SLOW_START:
 			this._slowStartThreshold = Math.floor(this._maxWindowSize / 2);
-			this._maxWindowSize = 1;
+			this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
 			this._duplicateAckCount = 0;
 			this._retransmit();
 			break;
 		case constants.CongestionControl.States.CONGESTION_AVOIDANCE:
 		case constants.CongestionControl.States.FAST_RECOVERY:
 			this._slowStartThreshold = Math.floor(this._maxWindowSize / 2);
-			this._maxWindowSize = 1;
+			this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
 			this._duplicateAckCount = 0;
 			this._retransmit();
 			this._changeCurrentCongestionControlState(constants.CongestionControl.States.SLOW_START);
