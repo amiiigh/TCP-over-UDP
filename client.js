@@ -27,7 +27,7 @@ connection.on('connect', () => {
 		startTime = process.hrtime();
 		timerIsRunning = true;
 	}
-})
+});
 
 clientSocket.on('message', function (message, rinfo) {
     var packet = new rudp.Packet(message);
