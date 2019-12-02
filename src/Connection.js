@@ -46,6 +46,9 @@ function Connection(packetSender) {
 	this._receiver.on('data', (data) => {
 		this.emit('data', data)
 	});
+	this._sender.once('done', () => {
+		this.emit('done');
+	})
 };
 
 util.inherits(Connection, Duplex);

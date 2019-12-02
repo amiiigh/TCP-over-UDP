@@ -31,7 +31,7 @@ Sender.prototype.clear = function () {
 
 Sender.prototype.send = function () {
 	this._sending = true;
-	this._sendData()
+	this._sendDataLoop()
 }
 
 Sender.prototype.addDataToQueue = function (data) {
@@ -157,14 +157,24 @@ Sender.prototype._windowHasSpace = function () {
 	return this._retransmissionQueue.length < Math.floor(this._maxWindowSize);
 }
 
-Sender.prototype._sendData = function () {
+Sender.prototype._sendDataLoop = function () {
 	while (this._sendingQueue.length && this._windowHasSpace()) {
-		let payload = this._sendingQueue.shift();
-		let packet = new Packet(this._connection.getNextSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.DATA, payload);
-		this._connection.incrementNextSequenceNumber();
-		this._packetSender.send(packet);
-		this._pushToRetransmissionQueue(packet);
+		this._sendOnePacket()
 	}
+};
+
+Sender.prototype._sendData = function () {
+	if (this._sendingQueue.length && this._windowHasSpace()) {
+		this._sendOnePacket()
+	}
+};
+
+Sender.prototype._sendOnePacket = function () {
+	let payload = this._sendingQueue.shift();
+	let packet = new Packet(this._connection.getNextSequenceNumber(), this._connection.getNextExpectedSequenceNumber(), constants.PacketTypes.DATA, payload);
+	this._connection.incrementNextSequenceNumber();
+	this._packetSender.send(packet);
+	this._pushToRetransmissionQueue(packet);
 };
 
 Sender.prototype._printCongestionControlInfo = function () {
@@ -185,34 +195,38 @@ Sender.prototype._changeCurrentCongestionControlState = function (newState) {
 Sender.prototype.verifyAck = function (sequenceNumber) {
 	if (this._retransmissionQueue.length && this._retransmissionQueue[0].packet.getSequenceNumber() < sequenceNumber) {
 		switch(this._currentCongestionControlState) {
-				case constants.CongestionControl.States.SLOW_START:
-					this._maxWindowSize = this._maxWindowSize + 1;
-					this._duplicateAckCount = 0;
-					if (this._maxWindowSize >= this._slowStartThreshold) {
-						this._changeCurrentCongestionControlState(constants.CongestionControl.States.CONGESTION_AVOIDANCE);
-					}
-					break;
-				case constants.CongestionControl.States.CONGESTION_AVOIDANCE:
-					this._duplicateAckCount = 0;
-					this._maxWindowSize = this._maxWindowSize + 1/ Math.floor(this._maxWindowSize);
-					break;
-				case constants.CongestionControl.States.FAST_RECOVERY:
-					this._maxWindowSize = this._slowStartThreshold;
-					this._duplicateAckCount = 0;
+			case constants.CongestionControl.States.SLOW_START:
+				this._maxWindowSize = this._maxWindowSize + 1;
+				this._duplicateAckCount = 0;
+				if (this._maxWindowSize >= this._slowStartThreshold) {
 					this._changeCurrentCongestionControlState(constants.CongestionControl.States.CONGESTION_AVOIDANCE);
-					break;
+				}
+				break;
+			case constants.CongestionControl.States.CONGESTION_AVOIDANCE:
+				this._duplicateAckCount = 0;
+				this._maxWindowSize = this._maxWindowSize + 1/ Math.floor(this._maxWindowSize);
+				break;
+			case constants.CongestionControl.States.FAST_RECOVERY:
+				this._maxWindowSize = this._slowStartThreshold;
+				this._duplicateAckCount = 0;
+				this._changeCurrentCongestionControlState(constants.CongestionControl.States.CONGESTION_AVOIDANCE);
+				break;
 		}
+		this._sendData();
 		this.restartTimeoutTimer();
 		while (this._retransmissionQueue.length && this._retransmissionQueue[0].packet.getSequenceNumber() < sequenceNumber) {
 			// this can be optimized
 			let packetObject = this._retransmissionQueue.shift();
+			if (this._sendingQueue.length === 0 ) {
+				this.emit('done')
+			}
+			this._sendData();
 			packetObject.packet.acknowledge();
 			if (packetObject.retransmitted === false) {
 				let sampleRTT = process.hrtime(packetObject.sentTime)
 				this._updateRTT(sampleRTT);
 			}
 		}
-		this._sendData();
 	} else if (this._retransmissionQueue.length && this._retransmissionQueue[0].packet.getSequenceNumber() === sequenceNumber){
 		switch(this._currentCongestionControlState) {
 			case constants.CongestionControl.States.SLOW_START:
