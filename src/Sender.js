@@ -104,7 +104,6 @@ Sender.prototype._timeout = function () {
 }
 
 Sender.prototype._retransmit = function () {
-	console.log('retransmit')
 	let packetsCount = Math.min(this._retransmissionQueue.size, Math.floor(this._maxWindowSize))
 	let iterator = this._retransmissionQueue.getIterator();
 	for (let i = 0; i < packetsCount; i++) {
