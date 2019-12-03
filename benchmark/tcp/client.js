@@ -12,12 +12,9 @@ client.connect(serverPort, serverAddress);
 readStream.on('error', function(e) {
 	console.error(e);
 });
+
 readStream.on('data', function(chunk) {
 	client.write(chunk)
-});
-
-readStream.on('end', function() {
-	client.end();
 });
 
 client.on('end', () => {
