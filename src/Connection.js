@@ -141,6 +141,7 @@ Connection.prototype.receive = function (packet) {
 					this._sender.verifyAck(packet.acknowledgementNumber)
 					break;
 				case constants.PacketTypes.DATA:
+					this._sender.verifyAck(packet.acknowledgementNumber)
 					this._receiver.receive(packet)
 					break;
 			}	
