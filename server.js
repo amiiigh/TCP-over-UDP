@@ -9,12 +9,18 @@ console.log('server is running on ', serverPort)
 _connections = {};
 timerIsRunning = false;
 var totalSize = 0
+var dest = fs.createWriteStream('received');
 serverSocket.on('message', function (message, rinfo) {
 	var addressKey = rinfo.address + rinfo.port;
 	var connection;
 	if (!_connections[addressKey]) {
 		connection = new rudp.Connection(new rudp.PacketSender(serverSocket, rinfo.address, rinfo.port));
 		_connections[addressKey] = connection;
+		connection.on('data', (data) => {
+			totalSize += data.length
+			console.log(totalSize)
+			dest.write(data)
+		})
 	} else {	  
 		connection = _connections[addressKey];
 	}
