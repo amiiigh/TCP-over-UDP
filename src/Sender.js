@@ -89,12 +89,12 @@ Sender.prototype._timeout = function () {
 			this._changeCurrentCongestionControlState(constants.CongestionControl.States.SLOW_START);
 			break;
 	}
-	if (this._timeoutCount > constants.Retransmission.MAX_NUMBER_OF_RETRANSMISSION) {
-		this._timeoutCount = 0;
-		this._stopTimeoutTimer();
-		this.emit('timeout');
-		return;
-	}
+	// if (this._timeoutCount > constants.Retransmission.MAX_NUMBER_OF_RETRANSMISSION) {
+	// 	this._timeoutCount = 0;
+	// 	this._stopTimeoutTimer();
+	// 	this.emit('timeout');
+	// 	return;
+	// }
 	if (this._retransmissionQueue.size) {
 		this._timeoutCount += 1;
 	}
