@@ -5,7 +5,6 @@ var Queue = require('./Queue');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 
-// TODO separate hashmap for packets needs to be acked
 module.exports = Sender;
 function Sender(connection, packetSender) {
 	this._packetSender = packetSender;
@@ -94,6 +93,7 @@ Sender.prototype._timeout = function () {
 		this._timeoutCount = 0;
 		this._stopTimeoutTimer();
 		this.emit('timeout');
+		return;
 	}
 	if (this._retransmissionQueue.size) {
 		this._timeoutCount += 1;
@@ -105,15 +105,13 @@ Sender.prototype._timeout = function () {
 
 Sender.prototype._retransmit = function () {
 	let packetsCount = Math.min(this._retransmissionQueue.size, Math.floor(this._maxWindowSize))
-	let tempQueue = new Queue();
+	let iterator = this._retransmissionQueue.getIterator();
 	for (let i = 0; i < packetsCount; i++) {
-		let packetObject = this._retransmissionQueue.dequeue();
-		packetObject = packetObject.value;
+		let packetObject = iterator.value;
 		this._packetSender.send(packetObject.packet);
 		packetObject.retransmitted = true;
-		tempQueue.enqueue(packetObject);
+		iterator = iterator.next
 	}
-	this._retransmissionQueue.pushFront(tempQueue);
 };
 
 Sender.prototype._pushToRetransmissionQueue = function (packet) {
@@ -248,6 +246,9 @@ Sender.prototype.verifyAck = function (sequenceNumber) {
 					let sampleRTT = process.hrtime(packetObject.sentTime)
 					this._updateRTT(sampleRTT);
 				}
+			}
+			if (this._retransmissionQueue.size === 0 && this._sendingQueue.length === 0) {
+				this.emit('done');
 			}
 			this._sendDataLoop()
 		} else if (retransmissionQueueHeadSequenceNumber === sequenceNumber){

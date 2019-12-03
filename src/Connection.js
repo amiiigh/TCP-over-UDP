@@ -196,10 +196,17 @@ Connection.prototype._changeCurrentTCPState = function (newState) {
 }
 
 Connection.prototype.close = function () {
-	this._sender.clear();
-	this._receiver.clear();
-	this._sender.sendFin();
-	this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_1)
+	switch(this.currentTCPState) {
+		case constants.LISTEN:
+		case constants.SYN_SENT:
+		case constants.SYN_RCVD:
+		case constants.TCPStates.ESTABLISHED:
+			this._sender.clear();
+			this._receiver.clear();
+			this._sender.sendFin();
+			this._changeCurrentTCPState(constants.TCPStates.FIN_WAIT_1)
+			break;
+	}
 }
 
 Connection.prototype._write = function (chunk, encoding, callback) {

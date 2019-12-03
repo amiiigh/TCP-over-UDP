@@ -8,8 +8,14 @@ module.exports = Queue;
 function Queue() {
 	this._ids = {};
 	this.size = 0;
+	this._iterator = null;
 	this._head = null;
 	this._tail = null;
+}
+
+Queue.prototype.getIterator = function () {
+	this._iterator = this._head;
+	return this._iterator;
 }
 
 Queue.prototype.enqueue = function (id, object) {
@@ -77,12 +83,11 @@ Queue.prototype.currentValue = function () {
 };
 
 Queue.prototype.toArray = function () {
-	let tempQ = new Queue();
 	let list = [];
-	for (let i =0; i<this.size; i++) {
-		let node = this.dequeue();
-		list.push(node.value);
-		this.enqueue(node.id, node.value);
+	let iter = this.getIterator();
+	while(iter) {
+		list.push(iter.value)
+		iter = iter.next;
 	}
 	return list;
 }

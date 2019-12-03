@@ -57,11 +57,3 @@ connection.on('done', () => {
 	console.log(chalk.bold.green('File',totalDataSize,  'has been sent', endTime[0] + endTime[1]/1000000000, 's'))
 	connection.close()
 })
-// setTimeout(() => {connection.close()}, 5000);
-// readStream.on('end', function() {
-// 	console.log(totalDataSize)
-// // 	var endTime = process.hrtime(startTime);
-// // 	console.log(chalk.bold.green('File',totalDataSize,  'has been sent', endTime[1]/1000000, ' ms'))
-// // 	// client.close()
-// // 	// clientSocket.close()
-// });
