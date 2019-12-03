@@ -136,9 +136,14 @@ Connection.prototype.receive = function (packet) {
 			}
 			break;
 		case constants.TCPStates.SYN_RCVD:
-			if (packet.packetType === constants.PacketTypes.ACK) {
-				this._sender.verifyAck(packet.acknowledgementNumber)
-			}
+			switch(packet.packetType) {
+				case constants.PacketTypes.ACK:
+					this._sender.verifyAck(packet.acknowledgementNumber)
+					break;
+				case constants.PacketTypes.DATA:
+					this._receiver.receive(packet)
+					break;
+			}	
 			break;
 		case constants.TCPStates.ESTABLISHED:
 			switch(packet.packetType) {
