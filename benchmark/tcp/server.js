@@ -21,6 +21,7 @@ const server = net.createServer((socket) => {
         startTime = process.hrtime();
       }
       totalSize += data.length
+      console.log(totalSize)
       if (totalSize === fileSize) {
         endTime = process.hrtime(startTime);
         console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
