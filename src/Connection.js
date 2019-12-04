@@ -117,7 +117,9 @@ Connection.prototype.send = function (data) {
 };
 
 Connection.prototype.receive = function (packet) {
-	// console.log('got:', packet)
+	if (this._sender._packetSender._address !== '80.240.22.240') {
+      console.log('got:', packet, 'expected:', this.nextExpectedSequenceNumber,'seq:', this.nextSequenceNumber);
+	}
 	this._restartTimeoutTimer();
 	switch(this.currentTCPState) {
 		case constants.TCPStates.LISTEN:
@@ -144,7 +146,7 @@ Connection.prototype.receive = function (packet) {
 					this._sender.verifyAck(packet.acknowledgementNumber)
 					this._receiver.receive(packet)
 					break;
-			}	
+			}
 			break;
 		case constants.TCPStates.ESTABLISHED:
 			switch(packet.packetType) {

@@ -15,6 +15,9 @@ Receiver.prototype.clear = function () {
 }
 
 Receiver.prototype.receive = function (packet) {
+	// if (!!this._packets[packet.sequenceNumber]) {
+	// 	return
+	// }
 	if (packet.sequenceNumber >= this._connection.nextExpectedSequenceNumber) {
 		this._packets[packet.sequenceNumber] = packet;
 		let index = packet.sequenceNumber;
