@@ -22,7 +22,7 @@ function Sender(connection, packetSender) {
 	this._sendingQueueStart = 0;
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
 	this._delayedAckTimer = null;
-	this._sample = false;
+	this._sample = true;
 	this._startTimeoutTimer();
 	this._startSamplingTimer();
 }

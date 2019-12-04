@@ -23,7 +23,7 @@ module.exports.CongestionControl = {
 		'CONGESTION_AVOIDANCE': 1,
 		'FAST_RECOVERY': 2
 	},
-	'INITIAL_SLOW_START_THRESHOLD': 50
+	'INITIAL_SLOW_START_THRESHOLD': 200
 };
 module.exports.Retransmission = {
 	'ALPHA': 0.125,
@@ -32,9 +32,9 @@ module.exports.Retransmission = {
 	'INITIAL_RETRANSMISSION_INTERVAL': 60
 };
 module.exports.CLOSE_WAIT_TIME = 1000;
-module.exports.INITIAL_MAX_WINDOW_SIZE = 32
+module.exports.INITIAL_MAX_WINDOW_SIZE = 100;
 module.exports.MAX_SEQUENCE_NUMBER = 4294967295;
 module.exports.DELAYED_ACK_TIME = 5;
-module.exports.UDP_SAFE_SEGMENT_SIZE = 1400;
+module.exports.UDP_SAFE_SEGMENT_SIZE = 1488;
 module.exports.CONNECTION_TIMEOUT_INTERVAL = 300000;
-module.exports.SAMPLING_INTERVAL = 50;
+module.exports.SAMPLING_INTERVAL = 20;
