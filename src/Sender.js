@@ -23,7 +23,6 @@ function Sender(connection, packetSender) {
 	this._maxWindowSize = constants.INITIAL_MAX_WINDOW_SIZE;
 	this._delayedAckTimer = null;
 	this._sample = true;
-	this._startTimeoutTimer();
 	this._startSamplingTimer();
 }
 util.inherits(Sender, EventEmitter);
@@ -89,12 +88,6 @@ Sender.prototype._timeout = function () {
 			this._changeCurrentCongestionControlState(constants.CongestionControl.States.SLOW_START);
 			break;
 	}
-	// if (this._timeoutCount > constants.Retransmission.MAX_NUMBER_OF_RETRANSMISSION) {
-	// 	this._timeoutCount = 0;
-	// 	this._stopTimeoutTimer();
-	// 	this.emit('timeout');
-	// 	return;
-	// }
 	if (this._retransmissionQueue.size) {
 		this._timeoutCount += 1;
 	}
@@ -104,13 +97,15 @@ Sender.prototype._timeout = function () {
 }
 
 Sender.prototype._retransmit = function () {
-	let packetsCount = Math.min(this._retransmissionQueue.size, Math.floor(this._maxWindowSize))
+	let packetsCount = Math.min(this._retransmissionQueue.size, Math.floor(this._maxWindowSize));
+  	console.log('###############1##')
+  	console.log(this._timeoutInterval)
+  	console.log(this._retransmissionQueue.toArray())
 	let iterator = this._retransmissionQueue.getIterator();
-	if (iterator === null) {
-		return
-	}
-	for (let i = 0; i < packetsCount; i++) {
+  for (let i = 0; i < packetsCount; i++) {
 		let packetObject = iterator.value;
+      	console.log('###############4##')
+    	console.log(this._retransmissionQueue.toArray())
 		this._packetSender.send(packetObject.packet);
 		packetObject.retransmitted = true;
 		iterator = iterator.next
@@ -128,6 +123,9 @@ Sender.prototype._pushToRetransmissionQueue = function (packet) {
 		this._sample = false;
 	}
 	this._retransmissionQueue.enqueue(packet.sequenceNumber, packetObject)
+  	if (this._timeoutTimer === null) {
+  		this._startTimeoutTimer();
+	}
 };
 
 Sender.prototype.sendSyn = function () {
@@ -249,9 +247,9 @@ Sender.prototype.verifyAck = function (sequenceNumber) {
 					let sampleRTT = process.hrtime(packetObject.sentTime)
 					this._updateRTT(sampleRTT);
 				}
-			}
-			if (this._retransmissionQueue.size === 0 && this._sendingQueue.length === 0) {
-				this.emit('done');
+				if (this._retransmissionQueue.size === 0) {
+					this._stopTimeoutTimer();
+				}
 			}
 			this._sendDataLoop()
 		} else if (retransmissionQueueHeadSequenceNumber === sequenceNumber){
@@ -272,9 +270,9 @@ Sender.prototype.verifyAck = function (sequenceNumber) {
 						this._slowStartThreshold = Math.floor(this._maxWindowSize / 2)
 						this._maxWindowSize = this._slowStartThreshold + 3;
 						this._retransmit();
-						this._changeCurrentCongestionControlState(constants.CongestionControl.States.FAST_RECOVERY);	
+						this._changeCurrentCongestionControlState(constants.CongestionControl.States.FAST_RECOVERY);
 						break;
-				}				
+				}
 			}
 		}
 	}

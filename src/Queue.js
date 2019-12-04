@@ -8,14 +8,12 @@ module.exports = Queue;
 function Queue() {
 	this._ids = {};
 	this.size = 0;
-	this._iterator = null;
 	this._head = null;
 	this._tail = null;
 }
 
 Queue.prototype.getIterator = function () {
-	this._iterator = this._head;
-	return this._iterator;
+	return Object.assign({}, this._head);
 }
 
 Queue.prototype.enqueue = function (id, object) {
@@ -26,10 +24,9 @@ Queue.prototype.enqueue = function (id, object) {
 	this._ids[id] = newTail;
 	if (this._head === null) {
 		this._head = newTail
-		
-	} else if (this._tail === null) {
-		this._tail = newTail
-		this._head.next = this._tail
+
+      	this._tail = newTail
+
 	} else {
 		this._tail.next = newTail;
 		this._tail = newTail;
@@ -37,19 +34,6 @@ Queue.prototype.enqueue = function (id, object) {
 	this.size = this.size + 1;
 }
 
-Queue.prototype.pushFront = function (queue) {
-	if (queue.size === 0) {
-		return;
-	}
-	if (queue._tail === null) {
-		queue._head.next = this._head;
-		this._head = queue._head;
-		return;
-	}
-	queue._tail.next = this._head
-	this._head = queue._head
-	this.size = this.size + queue.size;
-}
 
 Queue.prototype.dequeue = function () {
 	if (this._head === null) {
