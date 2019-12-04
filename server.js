@@ -15,6 +15,10 @@ serverSocket.on('message', function (message, rinfo) {
 	if (!_connections[addressKey]) {
 		connection = new rudp.Connection(new rudp.PacketSender(serverSocket, rinfo.address, rinfo.port));
 		_connections[addressKey] = connection;
+		connection.on('data', (data) => {
+			totalSize += data.length
+			console.log(totalSize)
+		})
 	} else {	  
 		connection = _connections[addressKey];
 	}
