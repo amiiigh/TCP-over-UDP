@@ -10,7 +10,7 @@ const stats = fs.statSync(args[1]);
 var fileSize = stats.size
 var dest = fs.createWriteStream('received');
 const server = net.createServer((socket) => {
-  socket.name = socket.remoteAddress + ":" + socket.remotePort 
+  socket.name = socket.remoteAddress + ":" + socket.remotePort
   console.log('new client connected ', socket.name);
   socket.on('end', () => {
     console.log('client disconnected');
@@ -21,7 +21,6 @@ const server = net.createServer((socket) => {
         startTime = process.hrtime();
       }
       totalSize += data.length
-      console.log(totalSize)
       if (totalSize === fileSize) {
         endTime = process.hrtime(startTime);
         console.log('File',totalSize,  'has been received',endTime[0] + endTime[1]/1000000000)
