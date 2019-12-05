@@ -226,6 +226,9 @@ Sender.prototype.verifyAck = async function (sequenceNumber) {
           let sampleRTT = process.hrtime(packetObject.sentTime)
           this._updateRTT(sampleRTT);
         }
+        if (this._retransmissionQueue.size === 0 && this._sendingQueue.length === 0) {
+        	this.emit('done')
+        }
         if (this._retransmissionQueue.size === 0) {
           this._stopTimeoutTimer();
         }
